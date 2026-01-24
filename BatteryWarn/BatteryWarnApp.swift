@@ -82,10 +82,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let button = statusItem.button else { return }
 
         let level = batteryMonitor.batteryLevel
-        let isCharging = batteryMonitor.isCharging
+        let isPluggedIn = batteryMonitor.isPluggedIn
 
         let iconName: String
-        if isCharging {
+        if isPluggedIn {
             iconName = "battery.100.bolt"
         } else if level > 75 {
             iconName = "battery.100"
