@@ -201,10 +201,45 @@ struct SettingsView: View {
                 .padding(20)
 
                 // Footer
-                VStack(spacing: 4) {
+                VStack(spacing: 8) {
                     Text("BatteryWarn v1.0")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
+
+                    HStack(spacing: 16) {
+                        Link(destination: URL(string: "https://github.com/rn54n/batterywarn")!) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 10))
+                                Text("Star on GitHub")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                        .onHover { inside in
+                            if inside {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
+
+                        Text("·")
+                            .foregroundColor(.secondary.opacity(0.5))
+
+                        Link(destination: URL(string: "https://codekraft.dev")!) {
+                            Text("codekraft.dev")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .onHover { inside in
+                            if inside {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
+                    }
                 }
                 .padding(.bottom, 16)
             }
