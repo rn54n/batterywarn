@@ -6,6 +6,8 @@ A native macOS menu bar app that displays a full-screen warning overlay when you
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange?style=flat-square&logo=swift)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
+![BatteryWarn Screenshot](screenshot.jpg)
+
 ## Features
 
 - **Full-Screen Warning Overlay** - Impossible to miss red overlay when battery is low
@@ -18,17 +20,6 @@ A native macOS menu bar app that displays a full-screen warning overlay when you
 - **Multi-Monitor Support** - Overlay appears on all connected displays
 - **Menu Bar App** - Lives quietly in your menu bar with dynamic battery icon
 - **Native macOS** - Built with SwiftUI, no Electron, minimal resource usage
-
-## Screenshots
-
-### Settings Window
-The clean settings interface shows your current battery status and lets you configure the warning threshold.
-
-### Warning Overlay
-A full-screen red overlay with clear messaging appears when your battery drops below the threshold.
-
-### Critical Mode
-Below 5% battery, the overlay becomes more urgent and requires a 3-second ESC hold to dismiss.
 
 ## Installation
 
