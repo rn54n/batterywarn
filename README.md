@@ -40,7 +40,7 @@ Below 5% battery, the overlay becomes more urgent and requires a 3-second ESC ho
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/batterywarn.git
+git clone https://github.com/rn54n/batterywarn.git
 cd batterywarn
 
 # Build the app
@@ -52,7 +52,7 @@ swift build -c release
 
 ### Option 2: Download Release
 
-Download the latest `.dmg` from the [Releases](https://github.com/YOUR_USERNAME/batterywarn/releases) page.
+Download the latest `.dmg` from the [Releases](https://github.com/rn54n/batterywarn/releases) page.
 
 ## Usage
 
