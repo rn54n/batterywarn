@@ -190,7 +190,7 @@ struct SettingsView: View {
             HelpItem(
                 icon: "battery.25",
                 title: "Warning Mode",
-                description: "When battery drops to your threshold, a red overlay appears. You can dismiss it and continue working - it will remind you again when battery drops another percent."
+                description: "When battery drops to your threshold, a full-screen warning appears. You can dismiss it and continue working - it will remind you again when battery drops another percent."
             )
 
             HelpItem(
