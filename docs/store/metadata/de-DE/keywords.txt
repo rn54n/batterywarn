@@ -1,0 +1,1 @@
+akku,batterie,akkustand,laden,ladegerät,strom,macbook,menüleiste,erinnerung,alarm,hinweis,laptop

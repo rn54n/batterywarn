@@ -1,0 +1,24 @@
+BatteryWarn zeigt eine Warnung im Vollbild, sobald der Akku deines MacBook auf die Schwelle fällt, die du festlegst. Keine kleine Mitteilung in der Ecke, die man ungelesen wegklickt: Der Bildschirm wird unscharf und dunkel, rot beleuchtet, und zeigt den Akkustand in riesiger Schrift. So schließt du das Netzteil an, bevor dein Mac mitten in der Arbeit ausgeht.
+
+SO FUNKTIONIERT ES
+• Wähle deine Warnschwelle zwischen 5 % und 99 %, indem du in den Einstellungen die Markierung auf dem Akku verschiebst.
+• Erreicht der Akku diese Schwelle, deckt die Warnung alle angeschlossenen Bildschirme ab. Sie zeigt den Akkustand und die Restlaufzeit, wie macOS sie schätzt.
+• Mit ESC oder einem Klick auf die Taste arbeitest du weiter. BatteryWarn erinnert dich erneut, sobald der Akku ein weiteres Prozent verliert.
+• Schließt du Strom an, verschwindet die Warnung von selbst.
+
+KRITISCHE STUFE
+Bei 5 % und darunter wird die Warnung kritisch. Zum Schließen musst du ESC dann 3 Sekunden gedrückt halten, damit sie nicht aus Versehen weggeklickt wird.
+
+DEINE REGELN
+• Allow Dismissing: Schaltest du es aus, bleibt die Warnung stehen, bis Strom angeschlossen ist. Für alle, die Warnungen sonst ignorieren.
+• Launch at Login: auf Wunsch, damit BatteryWarn nach jedem Neustart läuft.
+• Darstellung: hell, dunkel oder wie das System.
+• Vorschau: Sieh dir die Warnung jederzeit an, über die Menüleiste oder die Einstellungen.
+
+SONST BLEIBT ES STILL
+BatteryWarn sitzt in der Menüleiste und zeigt Akkustand und Restlaufzeit auf einen Blick. Die App braucht kaum Ressourcen und hält deinen Mac nicht wach.
+
+PRIVAT VON GRUND AUF
+Kein Konto, keine Werbung, kein Tracking. BatteryWarn sammelt keine Daten und baut keine Netzwerkverbindungen auf.
+
+Die Oberfläche der App ist englisch. BatteryWarn ist Open Source, der Code liegt auf GitHub.

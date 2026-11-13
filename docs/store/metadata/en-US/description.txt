@@ -1,0 +1,24 @@
+BatteryWarn shows a full-screen warning when your MacBook's battery drops to the level you choose. Not a small notification in the corner that you click away without reading: the screen blurs and dims under red light and shows the battery level in huge type, so you plug in before your Mac shuts down in the middle of your work.
+
+HOW IT WORKS
+• Pick your warning level between 5% and 99% by dragging the marker on the battery in Settings.
+• When the battery reaches that level, the warning covers every connected display. It shows the charge and the time remaining as estimated by macOS.
+• Press ESC or click the button to carry on. BatteryWarn reminds you again when the battery drops another percent.
+• Connect power and the warning disappears on its own.
+
+CRITICAL MODE
+At 5% and below the warning turns critical. Dismissing it now takes a 3 second hold on ESC, so it cannot be clicked away by accident.
+
+YOUR RULES
+• Allow Dismissing: turn it off and the warning stays on screen until power is connected. Made for people who know they ignore warnings.
+• Launch at Login: optional, so BatteryWarn is running after every restart.
+• Appearance: light, dark, or the same as the system.
+• Preview: see what the warning looks like at any time, from the menu bar or from Settings.
+
+QUIET THE REST OF THE TIME
+BatteryWarn lives in the menu bar and shows the battery level and the time remaining at a glance. It uses next to no resources and does not keep your Mac awake.
+
+PRIVATE BY DESIGN
+No account, no ads, no tracking. BatteryWarn collects no data and makes no network connections.
+
+BatteryWarn is open source. The code is on GitHub.
