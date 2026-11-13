@@ -72,7 +72,7 @@ open /Applications/BatteryWarn.app
 
 ## Usage
 
-1. **Launch the app** - BatteryWarn appears in your menu bar
+1. **Launch the app** - BatteryWarn appears in your menu bar and opens Settings the first time
 2. **Configure threshold** - Click the menu bar icon → Settings, then drag the marker on the battery
 3. **Turn on Launch at Login** - So BatteryWarn keeps watching after a restart
 4. **Test the overlay** - Use "Test Warning" in the menu or "Show Preview" in Settings
@@ -123,19 +123,44 @@ swift scripts/make-icon.swift
 ./scripts/make-screenshots.sh
 ```
 
+### Mac App Store build
+
+The Mac App Store and TestFlight get their own build: the same code, but sandboxed and universal. It is described by `project.yml` ([XcodeGen](https://github.com/yonaskolb/XcodeGen)) and signed through an App Store Connect API key from the environment (`ASC_KEY_ID`, `ASC_ISSUER`).
+
+```bash
+# Archive in build/BatteryWarn.xcarchive
+./scripts/build-appstore.sh
+
+# Archive and upload to App Store Connect
+./scripts/build-appstore.sh --upload
+
+# Re-render the store screenshots in docs/store/screenshots
+./scripts/make-appstore-screenshots.sh
+
+# Send texts, screenshots and TestFlight notes from docs/store to App Store Connect
+python3 -I docs/store/asc/batterywarn_store.py meta
+python3 -I docs/store/asc/batterywarn_store.py shots
+python3 -I docs/store/asc/batterywarn_store.py testflight
+```
+
 ## Project Structure
 
 ```
 batterywarn/
 ├── Package.swift              # Swift Package Manager config
+├── project.yml                # XcodeGen spec for the Mac App Store build
 ├── README.md
+├── PRIVACY.md                 # Privacy policy
 ├── LICENSE
 ├── AppIcon.png / .iconset / .icns # App icon (generated)
 ├── screenshots/               # README screenshots (generated)
+├── docs/store/                # App Store texts, screenshots and upload scripts
 ├── scripts/
 │   ├── build-app.sh               # Builds the .app bundle and DMG
+│   ├── build-appstore.sh          # Builds and uploads the Mac App Store variant
 │   ├── make-icon.swift            # Draws the app icon
-│   └── make-screenshots.sh        # Renders the screenshots
+│   ├── make-screenshots.sh        # Renders the README screenshots
+│   └── make-appstore-screenshots.sh   # Renders the App Store screenshots
 ├── BatteryWarn/
 │   ├── BatteryWarnApp.swift       # App entry point & AppDelegate
 │   ├── BatteryMonitor.swift       # IOKit battery monitoring
@@ -149,6 +174,7 @@ batterywarn/
 │   ├── SettingsWindow.swift       # Settings window setup
 │   ├── AppAppearance.swift        # Light / dark / system choice
 │   ├── LoginItem.swift            # Launch at login
+│   ├── FirstLaunch.swift          # Opens Settings on the very first start
 │   └── Info.plist                 # App configuration
 └── Tests/
     └── BatteryWarnTests/          # Unit tests & screenshot renderer
@@ -175,8 +201,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Known Limitations
 
 - Requires macOS 14.0 (Sonoma) or later
-- Not available on the Mac App Store (sandbox restrictions)
 - Overlay may not appear over some full-screen apps
+
+## Privacy
+
+BatteryWarn collects no data and makes no network connections. See the [privacy policy](PRIVACY.md).
 
 ## License
 
