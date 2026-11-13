@@ -10,20 +10,32 @@ class OverlayModel: ObservableObject {
     @Published private(set) var isHoldingEsc = false
 
     let threshold: Int
+    let allowsDismiss: Bool
     let isTest: Bool
     var onDismiss: (() -> Void)?
 
     static let escHoldDuration: TimeInterval = 3.0
 
-    init(batteryLevel: Int, isCritical: Bool, minutesRemaining: Int? = nil, threshold: Int, isTest: Bool = false) {
+    init(
+        batteryLevel: Int,
+        isCritical: Bool,
+        minutesRemaining: Int? = nil,
+        threshold: Int,
+        allowsDismiss: Bool = true,
+        isTest: Bool = false
+    ) {
         self.batteryLevel = batteryLevel
         self.isCritical = isCritical
         self.minutesRemaining = minutesRemaining
         self.threshold = threshold
+        self.allowsDismiss = allowsDismiss
         self.isTest = isTest
     }
 
     func escPressed() {
+        // Dismissing can be turned off in Settings; a preview always closes
+        guard allowsDismiss || isTest else { return }
+
         // For non-critical, instant dismiss
         if !isCritical {
             onDismiss?()

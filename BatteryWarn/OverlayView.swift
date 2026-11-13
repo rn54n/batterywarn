@@ -74,7 +74,9 @@ struct OverlayView: View {
                             .fill(.white.opacity(0.1))
                     )
 
-                    if isCritical {
+                    if !model.allowsDismiss {
+                        lockedNote
+                    } else if isCritical {
                         holdToDismiss
                     } else {
                         dismissButton
@@ -128,6 +130,16 @@ struct OverlayView: View {
             .font(.system(size: 14, weight: .medium, design: .rounded))
             .foregroundColor(.white.opacity(0.75))
         }
+    }
+
+    /// Shown instead of the dismiss controls when dismissing is turned off in Settings
+    private var lockedNote: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "lock.fill")
+            Text("This warning stays until you connect power")
+        }
+        .font(.system(size: 16, weight: .medium, design: .rounded))
+        .foregroundColor(.white.opacity(0.8))
     }
 
     /// ESC key inside a ring that fills while the key is held (critical only)

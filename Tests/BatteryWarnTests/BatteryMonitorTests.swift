@@ -106,6 +106,18 @@ final class BatteryMonitorTests: XCTestCase {
         XCTAssertEqual(relaunched.threshold, 35)
     }
 
+    func testDismissingIsAllowedByDefault() {
+        XCTAssertTrue(monitor.allowsDismiss)
+    }
+
+    func testDismissSettingSurvivesRelaunch() {
+        monitor.allowsDismiss = false
+
+        let relaunched = BatteryMonitor(defaults: defaults, readPowerSource: { nil })
+
+        XCTAssertFalse(relaunched.allowsDismiss)
+    }
+
     func testKeepsLastReadingWhenPowerSourceIsUnavailable() {
         battery(42)
 

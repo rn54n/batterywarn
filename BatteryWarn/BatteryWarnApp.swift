@@ -145,7 +145,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             batteryLevel: batteryMonitor.batteryLevel,
             isCritical: level == .critical,
             minutesRemaining: batteryMonitor.minutesRemaining,
-            threshold: batteryMonitor.threshold
+            threshold: batteryMonitor.threshold,
+            allowsDismiss: batteryMonitor.allowsDismiss
         )
         model.onDismiss = { [weak self] in
             self?.batteryMonitor.dismissOverlay()
@@ -170,6 +171,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             batteryLevel: batteryMonitor.threshold,
             isCritical: false,
             threshold: batteryMonitor.threshold,
+            allowsDismiss: batteryMonitor.allowsDismiss,
             isTest: true
         )
         model.onDismiss = { [weak self] in

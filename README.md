@@ -16,10 +16,11 @@ A native macOS menu bar app that displays a full-screen warning overlay when you
 
 - **Full-Screen Warning Overlay** - Impossible to miss red overlay when battery is low
 - **Time Remaining** - Shows how long the battery will last, as estimated by macOS
-- **Customizable Threshold** - Set your warning level between 5% and 99%
+- **Customizable Threshold** - Drag the marker on the battery in Settings, anywhere between 5% and 99%
 - **Two Warning Modes**:
   - **Warning Mode (6-99%)** - Dismissable with ESC or button, reminds again at next % drop
   - **Critical Mode (≤5%)** - Requires holding ESC for 3 seconds to dismiss
+- **Dismissable or Not** - Turn off dismissing and the warning stays until power is connected
 - **Stays Up to Date** - An open warning follows the battery level and turns critical on its own
 - **Auto-Dismiss** - Overlay disappears automatically when power is connected
 - **Launch at Login** - Optional, so the warning is still there after a restart
@@ -31,7 +32,7 @@ A native macOS menu bar app that displays a full-screen warning overlay when you
 
 ## Screenshots
 
-**Settings** - The battery bar shows the current charge and where the warning starts.
+**Settings** - The battery bar shows the current charge. Drag the marker on it to set where the warning starts.
 
 <p align="center">
   <picture>
@@ -72,7 +73,7 @@ open /Applications/BatteryWarn.app
 ## Usage
 
 1. **Launch the app** - BatteryWarn appears in your menu bar
-2. **Configure threshold** - Click the menu bar icon → Settings
+2. **Configure threshold** - Click the menu bar icon → Settings, then drag the marker on the battery
 3. **Turn on Launch at Login** - So BatteryWarn keeps watching after a restart
 4. **Test the overlay** - Use "Test Warning" in the menu or "Show Preview" in Settings
 5. **Work normally** - The app monitors your battery in the background
@@ -84,6 +85,8 @@ open /Applications/BatteryWarn.app
 | `ESC` | Dismiss immediately | Hold for 3 seconds |
 
 With the menu bar menu open, `⌘,` opens Settings and `⌘Q` quits the app.
+
+With **Allow Dismissing** turned off in Settings, ESC and the dismiss button are disabled: the warning stays until you connect power.
 
 ### How It Works
 

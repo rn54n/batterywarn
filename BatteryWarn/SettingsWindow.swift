@@ -11,7 +11,6 @@ enum SettingsWindow {
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.isMovableByWindowBackground = true
         window.setContentSize(hostingController.view.fittingSize)
 
         return window

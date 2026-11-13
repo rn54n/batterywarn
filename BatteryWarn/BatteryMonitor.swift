@@ -15,6 +15,13 @@ class BatteryMonitor: ObservableObject {
         }
     }
 
+    /// Off = the warning stays until power is connected
+    @Published var allowsDismiss: Bool {
+        didSet {
+            defaults.set(allowsDismiss, forKey: "allowsDismiss")
+        }
+    }
+
     /// The warning that currently belongs on screen
     private(set) var warningLevel: WarningLevel = .none
 
@@ -36,6 +43,7 @@ class BatteryMonitor: ObservableObject {
 
         let threshold = defaults.object(forKey: "batteryThreshold") as? Int ?? 10
         self.threshold = threshold
+        self.allowsDismiss = defaults.object(forKey: "allowsDismiss") as? Bool ?? true
         self.policy = WarningPolicy(threshold: threshold)
         updateBatteryInfo()
     }
