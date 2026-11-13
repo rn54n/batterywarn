@@ -2,78 +2,83 @@ import SwiftUI
 
 struct OverlayView: View {
     @ObservedObject var model: OverlayModel
+    /// Off where there is no screen behind the view to blur (previews, rendered screenshots)
+    var blursScreen = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulseAnimation = false
+    @State private var isHoveringDismiss = false
 
     private var isCritical: Bool { model.isCritical }
 
+    // Warning light: a vivid red, a softer tint of it for small text
+    private let glow = Color(red: 1.0, green: 0.23, blue: 0.19)
+    private let glowText = Color(red: 1.0, green: 0.48, blue: 0.43)
+
     var body: some View {
         ZStack {
-            // Background gradient - more intense red when critical
-            LinearGradient(
-                colors: isCritical ? [
-                    Color(red: 0.7, green: 0.0, blue: 0.0),
-                    Color(red: 0.5, green: 0.0, blue: 0.0)
-                ] : [
-                    Color(red: 0.6, green: 0.05, blue: 0.05),
-                    Color(red: 0.4, green: 0.02, blue: 0.02)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .opacity(pulseAnimation ? 0.97 : 0.92)
+            backdrop
 
             // Content
-            VStack(spacing: 40) {
+            VStack(spacing: 0) {
                 Spacer()
 
-                // Critical / test badge
                 if model.isTest {
-                    BadgeView(text: "TEST PREVIEW", fill: .white.opacity(0.2))
-                } else if isCritical {
-                    BadgeView(text: "CRITICAL", fill: .red)
+                    BadgeView(text: "TEST PREVIEW", fill: .white.opacity(0.16))
+                        .padding(.bottom, 22)
                 }
 
-                // Battery icon
-                BatteryIconView(level: model.batteryLevel)
-                    .frame(width: 180, height: 100)
+                statusLabel
 
-                // Main message
-                VStack(spacing: 16) {
-                    Text(isCritical ? "Critical Battery" : "Low Battery")
-                        .font(.system(size: 64, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                // Battery level, the one thing to read from across the room
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("\(model.batteryLevel)")
+                        .font(.system(size: 176, weight: .bold, design: .rounded))
+                        .tracking(-5)
+                        .contentTransition(.numericText())
 
-                    Text("\(model.batteryLevel)% remaining")
-                        .font(.system(size: 28, weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.8))
+                    Text("%")
+                        .font(.system(size: 76, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.55))
+                }
+                .foregroundColor(.white)
+                .animation(.easeInOut(duration: 0.4), value: model.batteryLevel)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Battery at \(model.batteryLevel) percent")
 
-                    if let timeRemaining = BatteryFormat.timeRemaining(minutes: model.minutesRemaining) {
-                        Text(timeRemaining)
-                            .font(.system(size: 20, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.7))
-                    }
+                levelBar
+                    .padding(.top, 2)
+
+                if let timeRemaining = BatteryFormat.timeRemaining(minutes: model.minutesRemaining) {
+                    Text(timeRemaining)
+                        .font(.system(size: 22, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.75))
+                        .padding(.top, 22)
                 }
 
                 // Instructions
-                VStack(spacing: 24) {
-                    HStack(spacing: 16) {
-                        Image(systemName: "bolt.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(.yellow)
+                HStack(spacing: 12) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.yellow)
 
-                        Text("Connect to power to continue")
-                            .font(.system(size: 22, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    .padding(.horizontal, 36)
-                    .padding(.vertical, 20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(.white.opacity(0.1))
-                    )
+                    Text("Connect to power to continue")
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.95))
+                }
+                .padding(.horizontal, 30)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(.white.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+                        )
+                )
+                .padding(.top, 48)
 
+                Group {
                     if !model.allowsDismiss {
                         lockedNote
                     } else if isCritical {
@@ -82,11 +87,12 @@ struct OverlayView: View {
                         dismissButton
                     }
                 }
+                .padding(.top, 26)
 
                 Spacer()
 
-                Text(model.isTest ? "This preview closes on its own after 5 seconds" : "Warning threshold: \(model.threshold)%")
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                Text(model.isTest ? "This preview closes on its own after 5 seconds" : "Warning threshold \(model.threshold)%")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.4))
                     .padding(.bottom, 32)
             }
@@ -95,40 +101,124 @@ struct OverlayView: View {
         .animation(.easeInOut(duration: 0.3), value: isCritical)
         .onAppear {
             guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: isCritical ? 1.2 : 2.0).repeatForever(autoreverses: true)) {
                 pulseAnimation = true
             }
         }
     }
 
+    // MARK: - Backdrop
+
+    /// The screen behind, blurred and dimmed, with red light coming in from the edges
+    private var backdrop: some View {
+        ZStack {
+            if blursScreen {
+                BackdropBlur()
+            }
+
+            Color.black
+                .opacity(isCritical ? 0.66 : 0.56)
+
+            // Edge light: a luminous rim that leaves the middle neutral.
+            // Stronger and faster when critical.
+            ZStack {
+                EllipticalGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.5),
+                        .init(color: glow.opacity(isCritical ? 0.5 : 0.32), location: 0.82),
+                        .init(color: glow.opacity(isCritical ? 1.0 : 0.85), location: 1.0)
+                    ],
+                    center: .center,
+                    startRadiusFraction: 0,
+                    endRadiusFraction: 0.68
+                )
+
+                LinearGradient(
+                    colors: [glow.opacity(isCritical ? 0.5 : 0.32), .clear],
+                    startPoint: .bottom,
+                    endPoint: UnitPoint(x: 0.5, y: 0.62)
+                )
+            }
+            .opacity(pulseAnimation ? 1.0 : 0.6)
+        }
+    }
+
+    // MARK: - Status
+
+    /// What kind of warning this is, above the number
+    @ViewBuilder
+    private var statusLabel: some View {
+        if isCritical {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 13, weight: .bold))
+                Text("CRITICAL BATTERY")
+                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .tracking(2.5)
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(glow)
+            )
+        } else {
+            Text("LOW BATTERY")
+                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                .tracking(4)
+                .foregroundColor(glowText)
+        }
+    }
+
+    /// Slim bar under the number: how little is left
+    private var levelBar: some View {
+        let width: CGFloat = 300
+
+        return ZStack(alignment: .leading) {
+            Capsule()
+                .fill(.white.opacity(0.16))
+
+            Capsule()
+                .fill(glow)
+                .frame(width: max(8, width * CGFloat(min(max(model.batteryLevel, 0), 100)) / 100))
+                .shadow(color: glow.opacity(0.9), radius: 8)
+        }
+        .frame(width: width, height: 8)
+        .animation(.easeInOut(duration: 0.4), value: model.batteryLevel)
+        .accessibilityHidden(true)
+    }
+
     // MARK: - Dismiss Controls
 
-    /// Dismiss button plus ESC hint (only when not critical)
+    /// Dismiss button with its ESC shortcut (only when not critical)
     private var dismissButton: some View {
-        VStack(spacing: 14) {
-            Button(action: { model.onDismiss?() }) {
-                HStack(spacing: 8) {
-                    Image(systemName: model.isTest ? "xmark" : "clock.arrow.circlepath")
-                    Text(model.isTest ? "Close preview" : "Remind me at \(model.batteryLevel - 1)%")
-                }
-                .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundColor(.white.opacity(0.9))
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(.white.opacity(0.4), lineWidth: 1)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .buttonStyle(.plain)
+        Button(action: { model.onDismiss?() }) {
+            HStack(spacing: 12) {
+                Text(model.isTest ? "Close preview" : "Remind me at \(model.batteryLevel - 1)%")
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.9))
 
-            HStack(spacing: 8) {
-                Text("or press")
                 KeyCapView()
             }
-            .font(.system(size: 14, weight: .medium, design: .rounded))
-            .foregroundColor(.white.opacity(0.75))
+            .padding(.leading, 22)
+            .padding(.trailing, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.white.opacity(isHoveringDismiss ? 0.14 : 0.0))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(.white.opacity(0.3), lineWidth: 1)
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.15)) {
+                isHoveringDismiss = hovering
+            }
         }
     }
 
@@ -170,16 +260,31 @@ struct OverlayView: View {
     }
 }
 
+/// Blurs whatever is on screen behind the overlay window
+struct BackdropBlur: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .fullScreenUI
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.appearance = NSAppearance(named: .darkAqua)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
 struct BadgeView: View {
     let text: String
     let fill: Color
 
     var body: some View {
         Text(text)
-            .font(.system(size: 14, weight: .black, design: .rounded))
-            .foregroundColor(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .font(.system(size: 12, weight: .heavy, design: .rounded))
+            .tracking(2)
+            .foregroundColor(.white.opacity(0.9))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
             .background(
                 Capsule()
                     .fill(fill)
@@ -190,7 +295,7 @@ struct BadgeView: View {
 struct KeyCapView: View {
     var body: some View {
         Text("esc")
-            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
             .foregroundColor(.white.opacity(0.9))
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
@@ -202,47 +307,5 @@ struct KeyCapView: View {
                             .stroke(.white.opacity(0.35), lineWidth: 1)
                     )
             )
-    }
-}
-
-struct BatteryIconView: View {
-    let level: Int
-
-    var body: some View {
-        ZStack {
-            // Battery outline
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.white.opacity(0.6), lineWidth: 4)
-                .frame(width: 140, height: 70)
-
-            // Battery cap
-            RoundedRectangle(cornerRadius: 4)
-                .fill(.white.opacity(0.6))
-                .frame(width: 12, height: 30)
-                .offset(x: 76)
-
-            // Battery fill
-            HStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(
-                        LinearGradient(
-                            colors: [.red.opacity(0.9), .red.opacity(0.7)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(width: max(10, CGFloat(level) / 100 * 120), height: 54)
-                Spacer()
-            }
-            .frame(width: 126)
-            .offset(x: -3)
-
-            // Percentage text
-            Text("\(level)")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Battery at \(level) percent")
     }
 }

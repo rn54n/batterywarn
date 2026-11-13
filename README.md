@@ -4,7 +4,7 @@
 
 <h1 align="center">BatteryWarn</h1>
 
-A native macOS menu bar app that displays a full-screen warning overlay when your MacBook battery drops below a customizable threshold. Never let your MacBook die unexpectedly again.
+A native macOS menu bar app that displays a full-screen warning when your MacBook battery drops to a customizable threshold. Never let your MacBook die unexpectedly again.
 
 ![macOS](https://img.shields.io/badge/macOS-14.0+-red?style=flat-square&logo=apple)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange?style=flat-square&logo=swift)
@@ -14,7 +14,7 @@ A native macOS menu bar app that displays a full-screen warning overlay when you
 
 ## Features
 
-- **Full-Screen Warning Overlay** - Impossible to miss red overlay when battery is low
+- **Full-Screen Warning** - Blurs and dims your screen under red light, with the battery level in huge type
 - **Time Remaining** - Shows how long the battery will last, as estimated by macOS
 - **Customizable Threshold** - Drag the marker on the battery in Settings, anywhere between 5% and 99%
 - **Two Warning Modes**:
