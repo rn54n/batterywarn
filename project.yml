@@ -1,0 +1,30 @@
+# XcodeGen spec for the sandboxed Mac App Store build (see scripts/build-appstore.sh).
+# The direct download is still built from Package.swift by scripts/build-app.sh.
+name: BatteryWarn
+options:
+  deploymentTarget:
+    macOS: "14.0"
+targets:
+  BatteryWarn:
+    type: application
+    platform: macOS
+    sources:
+      - path: BatteryWarn
+        excludes:
+          - Info.plist
+          - "*.entitlements"
+          # The icon ships as AppIcon.icns; the catalog only holds an empty icon set
+          - Assets.xcassets
+      - path: AppIcon.icns
+    settings:
+      base:
+        PRODUCT_NAME: BatteryWarn
+        PRODUCT_BUNDLE_IDENTIFIER: com.batterywarn.app
+        INFOPLIST_FILE: BatteryWarn/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: BatteryWarn/BatteryWarn-AppStore.entitlements
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: NUCM6R8N6D
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_VERSION: "5.0"
+    scheme: {}
