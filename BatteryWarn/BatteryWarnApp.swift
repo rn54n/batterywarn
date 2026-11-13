@@ -72,6 +72,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: .showTestOverlay,
             object: nil
         )
+
+        // Only a menu bar icon appears on launch, so introduce the app once
+        if FirstLaunch.consume() {
+            openSettings()
+        }
     }
 
     func updateMenuBar() {
