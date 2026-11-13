@@ -22,6 +22,7 @@ class AppState {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
+    var statusMenuItem: NSMenuItem!
     var overlayWindowController: OverlayWindowController?
     var settingsWindow: NSWindow?
 
@@ -30,6 +31,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        AppAppearance.saved.apply()
+
         // Setup menu bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
@@ -38,27 +41,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
+
+        // Read-only battery summary (no action = shown disabled)
+        statusMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        menu.addItem(statusMenuItem)
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Test Warning", action: #selector(handleTestOverlay), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit BatteryWarn", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
 
         // Subscribe to battery state changes
-        batteryMonitor.onLowBattery = { [weak self] isCritical in
-            self?.showOverlay(isCritical: isCritical)
+        batteryMonitor.onWarningChange = { [weak self] level in
+            self?.warningChanged(to: level)
         }
 
-        batteryMonitor.onPowerRestored = { [weak self] in
-            self?.hideOverlay()
+        // Subscribe to battery level updates for menu bar and open overlay
+        batteryMonitor.onBatteryUpdate = { [weak self] in
+            self?.updateMenuBar()
+            self?.updateOverlay()
         }
 
         batteryMonitor.startMonitoring()
-        updateMenuBarIcon()
-
-        // Subscribe to battery level updates for menu bar icon
-        batteryMonitor.onBatteryUpdate = { [weak self] in
-            self?.updateMenuBarIcon()
-        }
 
         // Listen for test overlay notification
         NotificationCenter.default.addObserver(
@@ -69,16 +74,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    @objc func handleTestOverlay() {
-        // Test with non-critical mode
-        showOverlay(isCritical: false)
-        // Auto-hide after 5 seconds for testing
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-            self?.hideOverlay()
-        }
-    }
-
-    func updateMenuBarIcon() {
+    func updateMenuBar() {
         guard let button = statusItem.button else { return }
 
         let level = batteryMonitor.batteryLevel
@@ -100,6 +96,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         button.image = NSImage(systemSymbolName: iconName, accessibilityDescription: "Battery: \(level)%")
+
+        statusMenuItem.title = BatteryFormat.menuStatus(
+            level: level,
+            isPluggedIn: isPluggedIn,
+            isCharging: batteryMonitor.isCharging,
+            minutesRemaining: batteryMonitor.minutesRemaining
+        )
     }
 
     @objc func openSettings() {
@@ -107,12 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let settingsView = SettingsView()
                 .environmentObject(AppState.shared.batteryMonitor)
 
-            let hostingController = NSHostingController(rootView: settingsView)
-
-            let window = NSWindow(contentViewController: hostingController)
-            window.title = "BatteryWarn Settings"
-            window.styleMask = [.titled, .closable]
-            window.setContentSize(NSSize(width: 400, height: 620))
+            let window = SettingsWindow.make(rootView: settingsView)
             window.center()
 
             self.settingsWindow = window
@@ -123,37 +121,78 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    func showOverlay(isCritical: Bool) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self, self.overlayWindowController == nil else { return }
+    // MARK: - Warning Overlay
 
-            let controller = OverlayWindowController(
-                batteryMonitor: self.batteryMonitor,
-                isCritical: isCritical
-            )
-
-            // Handle dismiss from overlay
-            controller.onDismiss = { [weak self] in
-                self?.dismissOverlay()
+    func warningChanged(to level: WarningLevel) {
+        guard level != .none else {
+            // A test preview is not the monitor's to close
+            if overlayWindowController?.model.isTest == false {
+                hideOverlay()
             }
-
-            self.overlayWindowController = controller
-            controller.showOverlay()
+            return
         }
+
+        // Already warning: let the open overlay escalate in place
+        if let model = overlayWindowController?.model, !model.isTest {
+            model.isCritical = level == .critical
+            return
+        }
+
+        // A real warning replaces a running test preview
+        hideOverlay()
+
+        let model = OverlayModel(
+            batteryLevel: batteryMonitor.batteryLevel,
+            isCritical: level == .critical,
+            minutesRemaining: batteryMonitor.minutesRemaining,
+            threshold: batteryMonitor.threshold
+        )
+        model.onDismiss = { [weak self] in
+            self?.batteryMonitor.dismissOverlay()
+        }
+        showOverlay(with: model)
+    }
+
+    /// Keep an open warning in step with the battery
+    func updateOverlay() {
+        guard let model = overlayWindowController?.model, !model.isTest else { return }
+
+        model.batteryLevel = batteryMonitor.batteryLevel
+        model.minutesRemaining = batteryMonitor.minutesRemaining
+    }
+
+    @objc func handleTestOverlay() {
+        // Never cover a real warning with a preview
+        guard overlayWindowController == nil else { return }
+
+        // Preview what the warning looks like at the configured threshold
+        let model = OverlayModel(
+            batteryLevel: batteryMonitor.threshold,
+            isCritical: false,
+            threshold: batteryMonitor.threshold,
+            isTest: true
+        )
+        model.onDismiss = { [weak self] in
+            self?.hideOverlay()
+        }
+        showOverlay(with: model)
+
+        // Auto-hide after 5 seconds, unless something else took over the screen
+        let preview = overlayWindowController
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self, weak preview] in
+            guard let self = self, let preview = preview, self.overlayWindowController === preview else { return }
+            self.hideOverlay()
+        }
+    }
+
+    func showOverlay(with model: OverlayModel) {
+        let controller = OverlayWindowController(model: model)
+        overlayWindowController = controller
+        controller.showOverlay()
     }
 
     func hideOverlay() {
-        DispatchQueue.main.async { [weak self] in
-            self?.overlayWindowController?.hideOverlay()
-            self?.overlayWindowController = nil
-        }
-    }
-
-    func dismissOverlay() {
-        DispatchQueue.main.async { [weak self] in
-            self?.batteryMonitor.dismissOverlay()
-            self?.overlayWindowController?.hideOverlay()
-            self?.overlayWindowController = nil
-        }
+        overlayWindowController?.hideOverlay()
+        overlayWindowController = nil
     }
 }
