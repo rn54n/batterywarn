@@ -43,7 +43,9 @@ class OverlayWindowController {
         criticalObserver = model.$isCritical
             .removeDuplicates()
             .sink { [weak self] isCritical in
-                self?.windows.forEach { $0.level = Self.windowLevel(isCritical: isCritical) }
+                guard let self = self else { return }
+                let level = Self.windowLevel(isBlocking: isCritical || !self.model.allowsDismiss)
+                self.windows.forEach { $0.level = level }
             }
 
         setupKeyMonitor()
@@ -85,7 +87,7 @@ class OverlayWindowController {
         )
 
         window.contentView = NSHostingView(rootView: OverlayView(model: model))
-        window.level = Self.windowLevel(isCritical: model.isCritical)
+        window.level = Self.windowLevel(isBlocking: model.isCritical || !model.allowsDismiss)
 
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.isOpaque = false
@@ -98,10 +100,10 @@ class OverlayWindowController {
         return window
     }
 
-    // Critical = higher window level, blocks more
-    // Non-critical = lower level, allows some system interaction
-    private static func windowLevel(isCritical: Bool) -> NSWindow.Level {
-        isCritical ? .screenSaver : .floating
+    // Critical or not dismissable = higher window level, blocks more
+    // Otherwise = lower level, allows some system interaction
+    private static func windowLevel(isBlocking: Bool) -> NSWindow.Level {
+        isBlocking ? .screenSaver : .floating
     }
 
     // MARK: - ESC Key Handling

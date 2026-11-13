@@ -11,13 +11,11 @@ struct SettingsView: View {
     var appIcon: NSImage = NSApplication.shared.applicationIconImage
 
     @AppStorage(AppAppearance.defaultsKey) private var appearance = AppAppearance.system
-    @State private var threshold: Double = 10
+    @State private var threshold = 10
     @State private var isDraggingThreshold = false
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var loginItemError: String?
     @State private var showHelp = false
-
-    private var roundedThreshold: Int { Int(threshold.rounded()) }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -25,14 +23,9 @@ struct SettingsView: View {
 
             // Warning
             SettingsGroup {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Warn me at")
-                            .font(.system(size: 13, weight: .medium))
-
-                        Spacer()
-
-                        Text("\(roundedThreshold)%")
+                SettingsRow(title: "Warn me at", caption: "Drag the marker on the battery, or use the arrows") {
+                    HStack(spacing: 8) {
+                        Text("\(threshold)%")
                             .font(.system(size: 13, weight: .bold, design: .monospaced))
                             .foregroundColor(.red)
                             .padding(.horizontal, 10)
@@ -41,30 +34,26 @@ struct SettingsView: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .fill(.red.opacity(0.12))
                             )
-                    }
 
-                    // Apply a drag only on release, so the overlay can't pop up mid-drag.
-                    // No step: it would draw a tick mark per percent; values are rounded instead.
-                    Slider(value: $threshold, in: 5...99) { editing in
-                        isDraggingThreshold = editing
-                        if !editing {
-                            batteryMonitor.threshold = roundedThreshold
-                        }
+                        Stepper("Warning level", value: $threshold, in: WarningPolicy.thresholdRange)
+                            .labelsHidden()
                     }
-                    .tint(.red)
-                    .onChange(of: threshold) { _, newValue in
-                        // Keyboard and accessibility changes arrive without a drag
-                        if !isDraggingThreshold {
-                            batteryMonitor.threshold = Int(newValue.rounded())
-                        }
-                    }
-
-                    Text("A full-screen warning appears when the battery drops to this level")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+
+                Divider()
+                    .padding(.leading, 16)
+
+                SettingsRow(
+                    title: "Allow Dismissing",
+                    caption: batteryMonitor.allowsDismiss
+                        ? "ESC or the button closes the warning until the next percent"
+                        : "The warning stays on screen until you connect power"
+                ) {
+                    Toggle("Allow Dismissing", isOn: $batteryMonitor.allowsDismiss)
+                        .toggleStyle(.switch)
+                        .tint(.red)
+                        .labelsHidden()
+                }
 
                 Divider()
                     .padding(.leading, 16)
@@ -111,15 +100,22 @@ struct SettingsView: View {
         .padding(.bottom, 16)
         .frame(width: 540)
         .fixedSize(horizontal: false, vertical: true)
+        .onChange(of: threshold) { _, newValue in
+            // Apply a drag only on release, so the overlay can't pop up mid-drag.
+            // Stepper and accessibility changes arrive without a drag.
+            if !isDraggingThreshold {
+                batteryMonitor.threshold = newValue
+            }
+        }
         .onAppear {
-            threshold = Double(batteryMonitor.threshold)
+            threshold = batteryMonitor.threshold
             launchAtLogin = LoginItem.isEnabled
         }
     }
 
     // MARK: - Header
 
-    /// App identity plus the live battery, with the warning level marked on it
+    /// App identity plus the live battery, with the warning level as a draggable marker on it
     private var header: some View {
         VStack(spacing: 18) {
             HStack(spacing: 14) {
@@ -155,7 +151,12 @@ struct SettingsView: View {
                 }
             }
 
-            BatteryGaugeView(level: batteryMonitor.batteryLevel, threshold: roundedThreshold)
+            BatteryGaugeView(level: batteryMonitor.batteryLevel, threshold: $threshold) { editing in
+                isDraggingThreshold = editing
+                if !editing {
+                    batteryMonitor.threshold = threshold
+                }
+            }
         }
     }
 
@@ -202,6 +203,12 @@ struct SettingsView: View {
                 icon: "escape",
                 title: "Keyboard Shortcuts",
                 description: "Press ESC once to dismiss warning. In critical mode, hold ESC for 3 seconds (progress ring shown)."
+            )
+
+            HelpItem(
+                icon: "lock.fill",
+                title: "No Dismissing",
+                description: "Turn off Allow Dismissing to keep the warning on screen until power is connected. ESC and the button are disabled then."
             )
 
             HelpItem(
@@ -296,15 +303,26 @@ struct SettingsRow<Control: View>: View {
     }
 }
 
-/// Battery bar: charge in green, the warning zone in red, a marker where the warning starts
+/// Battery bar: charge in green, the warning zone in red.
+/// Drag the handle (or anywhere on the bar) to set where the warning starts.
 struct BatteryGaugeView: View {
     let level: Int
-    let threshold: Int
+    @Binding var threshold: Int
+    var onEditingChanged: (Bool) -> Void = { _ in }
+
+    @State private var isDragging = false
 
     private let barHeight: CGFloat = 44
     private let inset: CGFloat = 5
     private let capWidth: CGFloat = 6
     private let capGap: CGFloat = 4
+
+    /// The warning level a drag at this x position inside the bar stands for
+    static func threshold(atX x: CGFloat, innerWidth: CGFloat) -> Int {
+        let range = WarningPolicy.thresholdRange
+        let percent = Int((x / innerWidth * 100).rounded())
+        return min(max(percent, range.lowerBound), range.upperBound)
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -348,27 +366,70 @@ struct BatteryGaugeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .offset(x: inset, y: inset)
 
-                // Marker where the warning starts
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.primary)
-                    .frame(width: 2, height: barHeight + 12)
-                    .offset(x: markerX - 1, y: -2)
+                // Drag handle where the warning starts
+                Capsule()
+                    .fill(.white)
+                    .overlay(
+                        Capsule()
+                            .stroke(.black.opacity(0.2), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.35), radius: isDragging ? 5 : 2, y: 1)
+                    .frame(width: 10, height: barHeight + 12)
+                    .scaleEffect(isDragging ? 1.08 : 1)
+                    .offset(x: markerX - 5, y: -6)
+                    .animation(.easeOut(duration: 0.15), value: isDragging)
 
-                // Marker label: to the right of the marker on the left half, otherwise to its left
+                // Handle label: to the right of the handle on the left half, otherwise to its left
                 Text("Warning at \(threshold)%")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
                     .frame(
-                        width: threshold < 50 ? geometry.size.width - markerX - 7 : markerX - 7,
+                        width: threshold < 50 ? geometry.size.width - markerX - 10 : markerX - 10,
                         alignment: threshold < 50 ? .leading : .trailing
                     )
-                    .offset(x: threshold < 50 ? markerX + 7 : 0, y: barHeight + 2)
+                    .offset(x: threshold < 50 ? markerX + 10 : 0, y: barHeight + 4)
+            }
+            // The whole bar takes the drag, like the track of a slider
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if !isDragging {
+                            isDragging = true
+                            onEditingChanged(true)
+                        }
+                        threshold = Self.threshold(atX: value.location.x - inset, innerWidth: innerWidth)
+                    }
+                    .onEnded { _ in
+                        isDragging = false
+                        onEditingChanged(false)
+                    }
+            )
+        }
+        .frame(height: barHeight + 20)
+        .animation(.easeInOut(duration: 0.4), value: level)
+        .onHover { inside in
+            if inside {
+                NSCursor.resizeLeftRight.push()
+            } else {
+                NSCursor.pop()
             }
         }
-        .frame(height: barHeight + 18)
-        .animation(.easeInOut(duration: 0.4), value: level)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Battery at \(level) percent, warning at \(threshold) percent")
+        .accessibilityLabel("Warning level")
+        .accessibilityValue("\(threshold) percent, battery at \(level) percent")
+        .accessibilityAdjustableAction { direction in
+            let range = WarningPolicy.thresholdRange
+            switch direction {
+            case .increment:
+                threshold = min(threshold + 1, range.upperBound)
+            case .decrement:
+                threshold = max(threshold - 1, range.lowerBound)
+            @unknown default:
+                break
+            }
+        }
     }
 }
 

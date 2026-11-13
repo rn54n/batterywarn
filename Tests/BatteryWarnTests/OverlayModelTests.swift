@@ -4,8 +4,14 @@ import XCTest
 final class OverlayModelTests: XCTestCase {
     private var dismissCount = 0
 
-    private func makeModel(isCritical: Bool) -> OverlayModel {
-        let model = OverlayModel(batteryLevel: isCritical ? 4 : 9, isCritical: isCritical, threshold: 10)
+    private func makeModel(isCritical: Bool, allowsDismiss: Bool = true, isTest: Bool = false) -> OverlayModel {
+        let model = OverlayModel(
+            batteryLevel: isCritical ? 4 : 9,
+            isCritical: isCritical,
+            threshold: 10,
+            allowsDismiss: allowsDismiss,
+            isTest: isTest
+        )
         model.onDismiss = { [unowned self] in self.dismissCount += 1 }
         return model
     }
@@ -51,6 +57,32 @@ final class OverlayModelTests: XCTestCase {
         model.escPressed()
         model.advanceHold(by: 2)
         XCTAssertEqual(dismissCount, 0)
+    }
+
+    func testEscIsIgnoredWhenDismissingIsOff() {
+        let model = makeModel(isCritical: false, allowsDismiss: false)
+
+        model.escPressed()
+
+        XCTAssertEqual(dismissCount, 0)
+    }
+
+    func testHoldingEscIsIgnoredWhenDismissingIsOff() {
+        let model = makeModel(isCritical: true, allowsDismiss: false)
+
+        model.escPressed()
+        model.advanceHold(by: 3)
+
+        XCTAssertEqual(dismissCount, 0)
+        XCTAssertFalse(model.isHoldingEsc)
+    }
+
+    func testPreviewStillClosesWithEscWhenDismissingIsOff() {
+        let model = makeModel(isCritical: false, allowsDismiss: false, isTest: true)
+
+        model.escPressed()
+
+        XCTAssertEqual(dismissCount, 1)
     }
 
     func testTimePassingWithoutEscDoesNotDismiss() {

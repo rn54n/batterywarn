@@ -8,6 +8,9 @@ enum WarningLevel: Equatable {
 
 /// Decides which warning belongs on screen for a given battery state
 struct WarningPolicy {
+    /// Thresholds the user can choose from
+    static let thresholdRange = 5...99
+
     var threshold: Int
     var criticalThreshold: Int = 5 // At or below this = critical
 
