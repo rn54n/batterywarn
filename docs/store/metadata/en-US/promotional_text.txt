@@ -1,0 +1,1 @@
+The low battery notification on your Mac is easy to miss. BatteryWarn covers the whole screen at the level you choose, so you plug in before your work is gone.

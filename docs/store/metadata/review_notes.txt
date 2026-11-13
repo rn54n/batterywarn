@@ -1,0 +1,13 @@
+BatteryWarn is a menu bar app and has no Dock icon. After launch its battery icon appears in the menu bar; on the very first launch the Settings window opens as well.
+
+How to see the warning without draining the battery:
+1. Click the battery icon in the menu bar and choose "Test Warning" (or open Settings and click "Show Preview").
+2. The full-screen warning appears. Close it with ESC or the button; it also closes by itself after 5 seconds.
+
+How to trigger a real warning: unplug the Mac, open Settings and drag the marker on the battery to a level above the current charge. The warning appears at once and disappears when power is connected.
+
+Notes:
+- "Allow Dismissing" is on by default. If the user turns it off, the warning stays until power is connected. The app can still be quit with Command-Q at any time, also while the warning is showing.
+- At 5% and below the warning is critical and ESC has to be held for 3 seconds.
+- "Launch at Login" is off by default and only changes when the user switches it on (SMAppService).
+- The app needs no account, collects no data and makes no network connections.

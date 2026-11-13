@@ -1,0 +1,1 @@
+Die Akku-Mitteilung von macOS übersieht man leicht. BatteryWarn deckt den ganzen Bildschirm ab, sobald dein Akku die gewählte Schwelle erreicht.

@@ -1,0 +1,6 @@
+Erster TestFlight-Build der Mac-App-Store-Version (mit Sandbox).
+
+Bitte ausprobieren:
+- Menüleisten-Symbol > Test Warning: Deckt die Warnung alle Bildschirme ab, und schließt ESC sie?
+- Settings: Markierung auf dem Akku verschieben, "Allow Dismissing" und "Launch at Login" umschalten.
+- Im Akkubetrieb: Erscheint die Warnung bei deiner Schwelle und verschwindet sie beim Anschließen?

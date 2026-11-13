@@ -1,0 +1,1 @@
+BatteryWarn shows a full-screen warning when your MacBook's battery drops to the level you choose, so you plug in before your Mac shuts down in the middle of your work. It lives in the menu bar.

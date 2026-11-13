@@ -1,0 +1,1 @@
+BatteryWarn zeigt eine Warnung im Vollbild, sobald der Akku deines MacBook auf die gewählte Schwelle fällt, damit du das Netzteil anschließt, bevor der Mac mitten in der Arbeit ausgeht. Die App sitzt in der Menüleiste.

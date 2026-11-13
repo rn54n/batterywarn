@@ -1,0 +1,6 @@
+First TestFlight build of the Mac App Store version (sandboxed).
+
+Please try:
+- Menu bar icon > Test Warning: does the warning cover every display, and does ESC close it?
+- Settings: drag the marker on the battery, switch "Allow Dismissing" and "Launch at Login".
+- On battery power: does the warning appear at your level and disappear when you plug in?
