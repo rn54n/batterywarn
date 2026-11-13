@@ -1,15 +1,12 @@
 import SwiftUI
 
 struct OverlayView: View {
-    var batteryMonitor: BatteryMonitor
-    var isCritical: Bool
-    var onDismiss: (() -> Void)?
+    @ObservedObject var model: OverlayModel
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulseAnimation = false
-    @State private var escHoldProgress: CGFloat = 0
-    @State private var isHoldingEsc = false
 
-    private let escHoldDuration: Double = 3.0
+    private var isCritical: Bool { model.isCritical }
 
     var body: some View {
         ZStack {
@@ -31,21 +28,15 @@ struct OverlayView: View {
             VStack(spacing: 40) {
                 Spacer()
 
-                // Critical badge
-                if isCritical {
-                    Text("CRITICAL")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(.red)
-                        )
+                // Critical / test badge
+                if model.isTest {
+                    BadgeView(text: "TEST PREVIEW", fill: .white.opacity(0.2))
+                } else if isCritical {
+                    BadgeView(text: "CRITICAL", fill: .red)
                 }
 
                 // Battery icon
-                BatteryIconView(level: batteryMonitor.batteryLevel)
+                BatteryIconView(level: model.batteryLevel)
                     .frame(width: 180, height: 100)
 
                 // Main message
@@ -54,13 +45,19 @@ struct OverlayView: View {
                         .font(.system(size: 64, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
 
-                    Text("\(batteryMonitor.batteryLevel)% remaining")
+                    Text("\(model.batteryLevel)% remaining")
                         .font(.system(size: 28, weight: .medium, design: .rounded))
                         .foregroundColor(.white.opacity(0.8))
+
+                    if let timeRemaining = BatteryFormat.timeRemaining(minutes: model.minutesRemaining) {
+                        Text(timeRemaining)
+                            .font(.system(size: 20, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
                 }
 
                 // Instructions
-                VStack(spacing: 20) {
+                VStack(spacing: 24) {
                     HStack(spacing: 16) {
                         Image(systemName: "bolt.fill")
                             .font(.system(size: 24))
@@ -77,120 +74,122 @@ struct OverlayView: View {
                             .fill(.white.opacity(0.1))
                     )
 
-                    // Dismiss button (only when not critical)
-                    if !isCritical {
-                        Button(action: { onDismiss?() }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "clock.arrow.circlepath")
-                                Text("Remind me at \(batteryMonitor.batteryLevel - 1)%")
-                            }
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(.white.opacity(0.3), lineWidth: 1)
-                            )
-                        }
-                        .buttonStyle(.plain)
+                    if isCritical {
+                        holdToDismiss
+                    } else {
+                        dismissButton
                     }
-
-                    // ESC hint
-                    Text(isCritical ? "Hold ESC for 3 seconds to dismiss" : "Press ESC or click button to dismiss")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundColor(.white.opacity(0.4))
                 }
 
                 Spacer()
 
-                // ESC progress indicator (when holding)
-                if isHoldingEsc {
-                    VStack(spacing: 8) {
-                        ProgressView(value: escHoldProgress)
-                            .progressViewStyle(.linear)
-                            .tint(.white)
-                            .frame(width: 200)
-
-                        Text("Hold ESC... \(Int(escHoldProgress * 100))%")
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                    .padding(.bottom, 20)
-                }
-
-                Text("Warning threshold: \(batteryMonitor.threshold)%")
+                Text(model.isTest ? "This preview closes on its own after 5 seconds" : "Warning threshold: \(model.threshold)%")
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(.white.opacity(0.4))
                     .padding(.bottom, 32)
             }
         }
         .ignoresSafeArea()
+        .animation(.easeInOut(duration: 0.3), value: isCritical)
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
                 pulseAnimation = true
             }
-            setupKeyMonitor()
-        }
-        .onDisappear {
-            removeKeyMonitor()
         }
     }
 
-    // MARK: - ESC Key Handling
+    // MARK: - Dismiss Controls
 
-    @State private var keyMonitor: Any?
-    @State private var escTimer: Timer?
-
-    private func setupKeyMonitor() {
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { event in
-            if event.keyCode == 53 { // ESC key
-                if event.type == .keyDown && !event.isARepeat {
-                    startEscHold()
-                } else if event.type == .keyUp {
-                    cancelEscHold()
+    /// Dismiss button plus ESC hint (only when not critical)
+    private var dismissButton: some View {
+        VStack(spacing: 14) {
+            Button(action: { model.onDismiss?() }) {
+                HStack(spacing: 8) {
+                    Image(systemName: model.isTest ? "xmark" : "clock.arrow.circlepath")
+                    Text(model.isTest ? "Close preview" : "Remind me at \(model.batteryLevel - 1)%")
                 }
-                return nil // Consume the event
+                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(.white.opacity(0.4), lineWidth: 1)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 12))
             }
-            return event
-        }
-    }
+            .buttonStyle(.plain)
 
-    private func removeKeyMonitor() {
-        if let monitor = keyMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
-        escTimer?.invalidate()
-    }
-
-    private func startEscHold() {
-        // For non-critical, instant dismiss
-        if !isCritical {
-            onDismiss?()
-            return
-        }
-
-        // For critical, require 3 second hold
-        isHoldingEsc = true
-        escHoldProgress = 0
-
-        let steps = 30
-        let interval = escHoldDuration / Double(steps)
-
-        escTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
-            escHoldProgress += 1.0 / CGFloat(steps)
-
-            if escHoldProgress >= 1.0 {
-                timer.invalidate()
-                onDismiss?()
+            HStack(spacing: 8) {
+                Text("or press")
+                KeyCapView()
             }
+            .font(.system(size: 14, weight: .medium, design: .rounded))
+            .foregroundColor(.white.opacity(0.75))
         }
     }
 
-    private func cancelEscHold() {
-        isHoldingEsc = false
-        escHoldProgress = 0
-        escTimer?.invalidate()
+    /// ESC key inside a ring that fills while the key is held (critical only)
+    private var holdToDismiss: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .stroke(.white.opacity(0.25), lineWidth: 4)
+
+                Circle()
+                    .trim(from: 0, to: model.escHoldProgress)
+                    .stroke(.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.1), value: model.escHoldProgress)
+
+                Text("esc")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+            .frame(width: 56, height: 56)
+
+            Text(model.isHoldingEsc ? "Keep holding…" : "Hold ESC for 3 seconds to dismiss")
+                .font(.system(size: 18, weight: .medium, design: .rounded))
+                .foregroundColor(.white.opacity(0.9))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Hold Escape for 3 seconds to dismiss")
+    }
+}
+
+struct BadgeView: View {
+    let text: String
+    let fill: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 14, weight: .black, design: .rounded))
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(fill)
+            )
+    }
+}
+
+struct KeyCapView: View {
+    var body: some View {
+        Text("esc")
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .foregroundColor(.white.opacity(0.9))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.white.opacity(0.15))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(.white.opacity(0.35), lineWidth: 1)
+                    )
+            )
     }
 }
 
@@ -231,5 +230,7 @@ struct BatteryIconView: View {
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Battery at \(level) percent")
     }
 }

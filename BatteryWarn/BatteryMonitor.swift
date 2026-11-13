@@ -6,38 +6,45 @@ class BatteryMonitor: ObservableObject {
     @Published var batteryLevel: Int = 100
     @Published var isCharging: Bool = false
     @Published var isPluggedIn: Bool = false
+    @Published var minutesRemaining: Int? = nil
     @Published var threshold: Int {
         didSet {
-            UserDefaults.standard.set(threshold, forKey: "batteryThreshold")
+            defaults.set(threshold, forKey: "batteryThreshold")
+            policy.threshold = threshold
             checkBatteryState()
         }
     }
-    @Published var criticalThreshold: Int = 5 // Below this = fully blocking
 
-    var onLowBattery: ((_ isCritical: Bool) -> Void)?
-    var onPowerRestored: (() -> Void)?
+    /// The warning that currently belongs on screen
+    private(set) var warningLevel: WarningLevel = .none
+
+    var onWarningChange: ((_ level: WarningLevel) -> Void)?
     var onBatteryUpdate: (() -> Void)?
 
+    private let defaults: UserDefaults
+    private let readPowerSource: () -> BatteryReading?
+    private var policy: WarningPolicy
     private var timer: Timer?
-    private var isOverlayShowing = false
     private var runLoopSource: CFRunLoopSource?
 
-    // Track dismissed level to re-show at next drop
-    private var dismissedAtLevel: Int? = nil
+    init(
+        defaults: UserDefaults = .standard,
+        readPowerSource: @escaping () -> BatteryReading? = BatteryMonitor.readSystemPowerSource
+    ) {
+        self.defaults = defaults
+        self.readPowerSource = readPowerSource
 
-    init() {
-        self.threshold = UserDefaults.standard.object(forKey: "batteryThreshold") as? Int ?? 10
+        let threshold = defaults.object(forKey: "batteryThreshold") as? Int ?? 10
+        self.threshold = threshold
+        self.policy = WarningPolicy(threshold: threshold)
         updateBatteryInfo()
     }
 
     func startMonitoring() {
-        updateBatteryInfo()
-        checkBatteryState()
+        refresh()
 
         timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            self?.updateBatteryInfo()
-            self?.checkBatteryState()
-            self?.onBatteryUpdate?()
+            self?.refresh()
         }
 
         setupPowerSourceNotification()
@@ -52,26 +59,17 @@ class BatteryMonitor: ObservableObject {
         }
     }
 
+    /// Read the power source again and re-evaluate the warning
+    func refresh() {
+        updateBatteryInfo()
+        checkBatteryState()
+        onBatteryUpdate?()
+    }
+
     /// Call this when user dismisses the overlay
     func dismissOverlay() {
-        dismissedAtLevel = batteryLevel
-        isOverlayShowing = false
-    }
-
-    /// Check if overlay should show (respects dismissal)
-    var shouldShowOverlay: Bool {
-        guard batteryLevel <= threshold && !isPluggedIn else { return false }
-
-        // If dismissed at a level, only show again when battery drops further
-        if let dismissed = dismissedAtLevel {
-            return batteryLevel < dismissed
-        }
-        return true
-    }
-
-    /// Check if current state is critical (no dismiss allowed)
-    var isCritical: Bool {
-        return batteryLevel <= criticalThreshold && !isPluggedIn
+        policy.dismiss(at: batteryLevel)
+        checkBatteryState()
     }
 
     private func setupPowerSourceNotification() {
@@ -81,9 +79,7 @@ class BatteryMonitor: ObservableObject {
             guard let context = context else { return }
             let monitor = Unmanaged<BatteryMonitor>.fromOpaque(context).takeUnretainedValue()
             DispatchQueue.main.async {
-                monitor.updateBatteryInfo()
-                monitor.checkBatteryState()
-                monitor.onBatteryUpdate?()
+                monitor.refresh()
             }
         }
 
@@ -93,43 +89,32 @@ class BatteryMonitor: ObservableObject {
         }
     }
 
-    private func updateBatteryInfo() {
+    static func readSystemPowerSource() -> BatteryReading? {
         guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [CFTypeRef],
               let source = sources.first,
               let description = IOPSGetPowerSourceDescription(snapshot, source)?.takeUnretainedValue() as? [String: Any] else {
-            return
+            return nil
         }
 
-        if let currentCapacity = description[kIOPSCurrentCapacityKey] as? Int {
-            batteryLevel = currentCapacity
-        }
+        return BatteryReading(description: description)
+    }
 
-        if let powerSource = description[kIOPSPowerSourceStateKey] as? String {
-            isPluggedIn = powerSource == kIOPSACPowerValue
-        }
+    private func updateBatteryInfo() {
+        guard let reading = readPowerSource() else { return }
 
-        if let charging = description[kIOPSIsChargingKey] as? Bool {
-            isCharging = charging
-        }
+        batteryLevel = reading.level
+        isPluggedIn = reading.isPluggedIn
+        isCharging = reading.isCharging
+        minutesRemaining = reading.minutesRemaining
     }
 
     private func checkBatteryState() {
-        // Reset dismissal when plugged in
-        if isPluggedIn {
-            dismissedAtLevel = nil
-            if isOverlayShowing {
-                isOverlayShowing = false
-                onPowerRestored?()
-            }
-            return
-        }
+        let level = policy.evaluate(batteryLevel: batteryLevel, isPluggedIn: isPluggedIn)
+        guard level != warningLevel else { return }
 
-        // Check if we should show overlay
-        if shouldShowOverlay && !isOverlayShowing {
-            isOverlayShowing = true
-            onLowBattery?(isCritical)
-        }
+        warningLevel = level
+        onWarningChange?(level)
     }
 
     deinit {
