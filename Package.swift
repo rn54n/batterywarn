@@ -10,7 +10,7 @@ let package = Package(
         .executableTarget(
             name: "BatteryWarn",
             path: "BatteryWarn",
-            exclude: ["Info.plist", "BatteryWarn.entitlements"],
+            exclude: ["Info.plist", "BatteryWarn.entitlements", "BatteryWarn-AppStore.entitlements"],
             resources: [
                 .process("Assets.xcassets")
             ]
